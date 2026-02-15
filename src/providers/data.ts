@@ -28,12 +28,12 @@ const options:  CreateDataProviderOptions = {
 
 
     mapResponse: async (response) => {
-      const payLoad: ListResponse = await response.json();
+      const payLoad: ListResponse = await response.clone().json();
       return payLoad.data ?? [];
     },
 
     getTotalCount: async (response) => {
-      const payload: ListResponse = await response.json();
+      const payload: ListResponse = await response.clone().json();
 
       return payload.pagination?.total ?? payload.data?.length ?? 0;
     }
