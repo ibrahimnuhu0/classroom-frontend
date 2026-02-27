@@ -1,32 +1,43 @@
-import {CreateView} from "@/components/refine-ui/views/create-view.tsx";
-import {Breadcrumb} from "@/components/refine-ui/layout/breadcrumb.tsx";
-import {Button} from "@/components/ui/button.tsx";
-import {useBack} from "@refinedev/core";
-import {Separator} from "@/components/ui/separator.tsx";
-import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card.tsx"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "@refinedev/react-hook-form"
-import {classSchema} from "@/lib/schema.ts";
+import { CreateView } from "@/components/refine-ui/views/create-view.tsx";
+import { Breadcrumb } from "@/components/refine-ui/layout/breadcrumb.tsx";
+import { Button } from "@/components/ui/button.tsx";
+import { useBack } from "@refinedev/core";
+import { Separator } from "@/components/ui/separator.tsx";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "@refinedev/react-hook-form";
+import { classSchema } from "@/lib/schema.ts";
 import * as z from "zod";
 import { useList } from "@refinedev/core";
 
 import {
     Form,
     FormControl,
-    FormDescription,
     FormField,
     FormItem,
     FormLabel,
     FormMessage,
-} from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import {Label} from "@/components/ui/label.tsx";
-import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select.tsx";
-import {Textarea} from "@/components/ui/textarea.tsx";
-import {Loader2} from "lucide-react";
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select.tsx";
+import { Textarea } from "@/components/ui/textarea.tsx";
+import { Loader2 } from "lucide-react";
 import UploadWidget from "@/components/Upload_Widget";
 import { Subject } from "@/types";
 
+// Define User type if not imported
+interface User {
+    id: number;
+    name: string;
+    email: string;
+    role: string;
+}
 
 const Create = () => {
     const back = useBack();
@@ -36,8 +47,7 @@ const Create = () => {
         refineCoreProps: {
             resource: "classes",
             action: "create",
-        }
-       
+        },
     });
 
     const {
@@ -47,63 +57,84 @@ const Create = () => {
         control,
     } = form;
 
-    const onSubmit = async (values: z.infer<typeof classSchema>) => {
-        try {
-            await onFinish(values);
-        } catch (error) {
-            console.error("Error creating class:", error);
-        }
-    };
-
- 
-        // Fetch subjects list
-        const { query: subjectsQuery } = useList<Subject>({
-            resource: "subjects",
-            pagination: {
+    // ✅ FIXED: Properly fetch subjects list
+    const { 
+        data: subjectsData, 
+        isLoading: subjectsLoading,
+        isError: subjectsError,
+        error: subjectsErrorDetails 
+    } = useList<Subject>({
+        resource: "subjects",
+        pagination: {
             pageSize: 100,
-            },
-        });
+        },
+    });
 
-        // Fetch teachers list
-        const { query: teachersQuery } = useList<User>({
-            resource: "users",
-            filters: [
+    // ✅ FIXED: Properly fetch teachers list
+    const { 
+        data: teachersData, 
+        isLoading: teachersLoading,
+        isError: teachersError,
+        error: teachersErrorDetails 
+    } = useList<User>({
+        resource: "users",
+        filters: [
             {
                 field: "role",
                 operator: "eq",
                 value: "teacher",
             },
-            ],
-            pagination: {
+        ],
+        pagination: {
             pageSize: 100,
-            },
-        });
+        },
+    });
 
-        const teachers = teachersQuery.data?.data || [];
-        const teachersLoading = teachersQuery.isLoading;
+    // Log errors if they occur (for debugging)
+    if (subjectsError) {
+        console.error("❌ Subjects fetch error:", subjectsErrorDetails);
+    }
+    
+    if (teachersError) {
+        console.error("❌ Teachers fetch error:", teachersErrorDetails);
+    }
 
-        const subjects = subjectsQuery.data?.data || [];
-        const subjectsLoading = subjectsQuery.isLoading;
+    // ✅ FIXED: Properly access the data array
+    const subjects = subjectsData?.data || [];
+    const teachers = teachersData?.data || [];
 
+    const onSubmit = async (values: z.infer<typeof classSchema>) => {
+        try {
+            // Format the values before submitting
+            const formattedValues = {
+                ...values,
+                subjectId: values.subjectId ? Number(values.subjectId) : undefined,
+                teacherId: values.teacherId ? Number(values.teacherId) : undefined,
+                capacity: values.capacity ? Number(values.capacity) : undefined,
+            };
+            await onFinish(formattedValues);
+        } catch (error) {
+            console.error("Error creating class:", error);
+        }
+    };
 
     const bannerPublicId = form.watch('bannerCldPubId');
 
-    const  setBannerImage =  (file: any, field: any) => {
+    const setBannerImage = (file: any, field: any) => {
         if (file) {
             field.onChange(file.url);
             form.setValue('bannerCldPubId', file.publicId, {
                 shouldValidate: true,
                 shouldDirty: true,
-
-            })
+            });
         } else {
             field.onChange('');
             form.setValue('bannerCldPubId', '', {
                 shouldValidate: true,
                 shouldDirty: true,
-            })
+            });
         }
-    }
+    };
 
     return (
         <CreateView className="class-view">
@@ -130,27 +161,29 @@ const Create = () => {
                     <CardContent className="mt-7">
                         <Form {...form}>
                             <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-                             <FormField 
-                             control={control}
-                             name="bannerUrl"
-                             render={({field}) => (
-                                <FormItem>
-                                    <FormLabel>
-                                        Banner Image <span className="text-orange-600">*</span>
-                                    </FormLabel>
-                                    <FormControl>
-                                        <UploadWidget
-                                        value={field.value ? {url: field.value, publicId: bannerPublicId ?? ''} : undefined}
-                                        onChange={(file: any) => setBannerImage(file, field)}
-                                        />
-                                    </FormControl>
-                                    <FormMessage/>
-                                    {errors.bannerCldPubId && !errors.bannerUrl && (
-                                        <p className="text-destructive text-sm">{errors.bannerCldPubId.message?.toString()}</p>
+                                <FormField
+                                    control={control}
+                                    name="bannerUrl"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>
+                                                Banner Image <span className="text-orange-600">*</span>
+                                            </FormLabel>
+                                            <FormControl>
+                                                <UploadWidget
+                                                    value={field.value ? { url: field.value, publicId: bannerPublicId ?? '' } : undefined}
+                                                    onChange={(file: any) => setBannerImage(file, field)}
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                            {errors.bannerCldPubId && !errors.bannerUrl && (
+                                                <p className="text-destructive text-sm">
+                                                    {errors.bannerCldPubId.message?.toString()}
+                                                </p>
+                                            )}
+                                        </FormItem>
                                     )}
-                                </FormItem>
-                             )}
-                             />
+                                />
 
                                 <FormField
                                     control={control}
@@ -181,15 +214,19 @@ const Create = () => {
                                                     Subject <span className="text-orange-600">*</span>
                                                 </FormLabel>
                                                 <Select
-                                                    onValueChange={(value) =>
-                                                        field.onChange(Number(value))
-                                                    }
+                                                    onValueChange={(value) => field.onChange(Number(value))}
                                                     value={field.value?.toString()}
-                                                     disabled={subjectsLoading}
+                                                    disabled={subjectsLoading}
                                                 >
                                                     <FormControl>
                                                         <SelectTrigger className="w-full">
-                                                            <SelectValue placeholder="Select a subject" />
+                                                            <SelectValue placeholder={
+                                                                subjectsLoading 
+                                                                    ? "Loading subjects..." 
+                                                                    : subjectsError 
+                                                                    ? "Error loading subjects" 
+                                                                    : "Select a subject"
+                                                            } />
                                                         </SelectTrigger>
                                                     </FormControl>
                                                     <SelectContent>
@@ -217,13 +254,19 @@ const Create = () => {
                                                     Teacher <span className="text-orange-600">*</span>
                                                 </FormLabel>
                                                 <Select
-                                                    onValueChange={field.onChange}
-                                                    value={field.value}
-                                                     disabled={teachersLoading}
+                                                    onValueChange={(value) => field.onChange(Number(value))}
+                                                    value={field.value?.toString()}
+                                                    disabled={teachersLoading}
                                                 >
                                                     <FormControl>
                                                         <SelectTrigger className="w-full">
-                                                            <SelectValue placeholder="Select a teacher" />
+                                                            <SelectValue placeholder={
+                                                                teachersLoading 
+                                                                    ? "Loading teachers..." 
+                                                                    : teachersError 
+                                                                    ? "Error loading teachers" 
+                                                                    : "Select a teacher"
+                                                            } />
                                                         </SelectTrigger>
                                                     </FormControl>
                                                     <SelectContent>
@@ -258,10 +301,7 @@ const Create = () => {
                                                             const value = e.target.value;
                                                             field.onChange(value ? Number(value) : undefined);
                                                         }}
-                                                        value={(field.value as number | undefined) ?? ""}
-                                                        name={field.name}
-                                                        ref={field.ref}
-                                                        onBlur={field.onBlur}
+                                                        value={field.value ?? ""}
                                                     />
                                                 </FormControl>
                                                 <FormMessage />
