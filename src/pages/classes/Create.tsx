@@ -226,7 +226,7 @@ const ClassesCreate = () => {
                           Teacher <span className="text-orange-600">*</span>
                         </FormLabel>
                         <Select
-                          onValueChange={field.onChange}
+                          onValueChange={(value) => field.onChange(Number(value))}
                           value={field.value?.toString()}
                           disabled={teachersLoading}
                         >
