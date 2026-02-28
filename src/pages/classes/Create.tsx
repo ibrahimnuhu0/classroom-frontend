@@ -27,7 +27,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useBack, useList } from "@refinedev/core";
 import { Loader2 } from "lucide-react";
 import { classSchema } from "@/lib/schema";
-import UploadWidget from "@/components/Upload_Widget";
+import UploadWidget from "@/components/upload-widget";
 import { Subject, User } from "@/types";
 import z from "zod";
 
@@ -226,7 +226,7 @@ const ClassesCreate = () => {
                           Teacher <span className="text-orange-600">*</span>
                         </FormLabel>
                         <Select
-                          onValueChange={(value) => field.onChange(Number(value))}
+                          onValueChange={field.onChange}
                           value={field.value?.toString()}
                           disabled={teachersLoading}
                         >
